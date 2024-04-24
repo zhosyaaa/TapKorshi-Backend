@@ -1,6 +1,7 @@
 package smtp
 
 import (
+	"github.com/go-gomail/gomail"
 	"github.com/pkg/errors"
 	"github.com/zhosyaaa/RoommateTap/pkg/email"
 )
