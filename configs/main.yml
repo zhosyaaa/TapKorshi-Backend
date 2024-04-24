@@ -1,0 +1,13 @@
+http:
+  port: 8000
+  maxHeaderBytes: 1
+  readTimeout: 10s
+  writeTimeout: 10s
+
+db:
+  databaseName: RoommateTap
+  databaseHost: localhost
+  databasePort: 5432
+  databaseSslmode: disable
+  databaseUser: postgres
+  databasePassword: 1079
