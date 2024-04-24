@@ -13,6 +13,9 @@ type UserRepository struct {
 func NewUserRepository(db *sql.DB) *UserRepository {
 	return &UserRepository{db: db}
 }
+func (r *UserRepository) SetSession(userID uint, session domain.Session) error {
+	return nil
+}
 
 func (r *UserRepository) Create(user domain.User) error {
 	query := `
@@ -48,8 +51,8 @@ func (r *UserRepository) Update(user domain.User) error {
 	return nil
 }
 
-func (r *UserRepository) Delete(userID uint) error {
-	_, err := r.db.Exec("DELETE FROM users WHERE id = $1", userID)
+func (r *UserRepository) Delete(userId uint) error {
+	_, err := r.db.Exec("DELETE FROM users WHERE id = $1", userId)
 	if err != nil {
 		return err
 	}
