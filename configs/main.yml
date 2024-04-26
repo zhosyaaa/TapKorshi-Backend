@@ -12,6 +12,19 @@ db:
   databaseUser: postgres
   databasePassword: 1079
 
+cache:
+  ttl: 60s
+
+auth:
+  accessTokenTTL: 2h
+  refreshTokenTTL: 720h #30 days
+  verificationCodeLength: 8
+
+limiter:
+  rps: 10
+  burst: 20
+  ttl: 10m
+
 email:
   templates:
     verification_email: "./templates/verification_email.html"
@@ -20,7 +33,7 @@ email:
     verification_email: "Спасибо за регистрацию, %s!"
     purchase_successful: "Покупка прошла успешно!"
 
-limiter:
-  rps: 10
-  burst: 20
-  ttl: 10m
+smtp:
+  host: smtp.gmail.com
+  port: 587
+  from: musabecova05@gmail.com

@@ -20,13 +20,13 @@ func (r *UserRepository) SetSession(userID uint, session domain.Session) error {
 func (r *UserRepository) Create(user domain.User) error {
 	query := `
         INSERT INTO users (
-            email, username, phone, password_hash, created_at, last_visit_at, verification
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+            email, username, phone, password_hash, created_at, last_visit_at, verification_code, verification_verified
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
     `
 	_, err := r.db.Exec(
 		query,
 		user.Email, user.Username, user.Phone, user.Password_hash,
-		user.Created_at, user.LastVisitAt, user.Verification,
+		user.Created_at, user.LastVisitAt, user.VerificationCode, user.VerificationVerified,
 	)
 	if err != nil {
 		return err
@@ -37,13 +37,13 @@ func (r *UserRepository) Create(user domain.User) error {
 func (r *UserRepository) Update(user domain.User) error {
 	query := `
 		UPDATE users 
-		SET email = $1, username = $2, phone = $3, password_hash = $4, last_visit_at = $5, verification = $6 
-		WHERE id = $7
+		SET email = $1, username = $2, phone = $3, password_hash = $4, last_visit_at = $5, verification_code = $6, verification_verified = $7
+		WHERE id = $8
 	`
 	_, err := r.db.Exec(
 		query,
 		user.Email, user.Username, user.Phone, user.Password_hash,
-		user.LastVisitAt, user.Verification, user.ID,
+		user.LastVisitAt, user.VerificationCode, user.VerificationVerified, user.ID,
 	)
 	if err != nil {
 		return err
@@ -62,13 +62,13 @@ func (r *UserRepository) Delete(userId uint) error {
 func (r *UserRepository) GetByRefreshToken(refreshToken string) (domain.User, error) {
 	var user domain.User
 	query := `
-		SELECT id, email, username, phone, password_hash, created_at, last_visit_at, verification 
+		SELECT id, email, username, phone, password_hash, created_at, last_visit_at, verification_code, verification_verified
 		FROM users 
 		WHERE refresh_token = $1 AND expires_at > $2
 	`
 	err := r.db.QueryRow(query, refreshToken, time.Now()).Scan(
 		&user.ID, &user.Email, &user.Username, &user.Phone,
-		&user.Password_hash, &user.Created_at, &user.LastVisitAt, &user.Verification,
+		&user.Password_hash, &user.Created_at, &user.LastVisitAt, &user.VerificationCode, &user.VerificationVerified,
 	)
 	if err != nil {
 		return domain.User{}, err
@@ -79,13 +79,13 @@ func (r *UserRepository) GetByRefreshToken(refreshToken string) (domain.User, er
 func (r *UserRepository) GetByCredentials(email, password string) (domain.User, error) {
 	var user domain.User
 	query := `
-		SELECT id, email, username, phone, password_hash, created_at, last_visit_at, verification 
+		SELECT id, email, username, phone, password_hash, created_at, last_visit_at, verification_code, verification_verified
 		FROM users 
 		WHERE email = $1 AND password_hash = $2
 	`
 	err := r.db.QueryRow(query, email, password).Scan(
 		&user.ID, &user.Email, &user.Username, &user.Phone,
-		&user.Password_hash, &user.Created_at, &user.LastVisitAt, &user.Verification,
+		&user.Password_hash, &user.Created_at, &user.LastVisitAt, &user.VerificationCode, &user.VerificationVerified,
 	)
 	if err != nil {
 		return domain.User{}, err

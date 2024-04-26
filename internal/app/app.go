@@ -15,6 +15,7 @@ import (
 	"github.com/zhosyaaa/RoommateTap/pkg/email/smtp"
 	"github.com/zhosyaaa/RoommateTap/pkg/hash"
 	"github.com/zhosyaaa/RoommateTap/pkg/logger"
+	"github.com/zhosyaaa/RoommateTap/pkg/otp"
 	"log"
 	"net/http"
 	"os"
@@ -24,9 +25,10 @@ import (
 )
 
 func Run(configPath string) {
+	fmt.Println("---------RUN-------------")
 	cfg, err := config.Init(configPath)
 	if err != nil {
-		return
+		log.Fatalf("Error getting configs: %v", err)
 	}
 	fmt.Println("cfg: ", cfg)
 
@@ -57,6 +59,7 @@ func Run(configPath string) {
 		return
 	}
 
+	otpGenerator := otp.NewGOTPGenerator()
 	services := service.NewServices(service.Deps{
 		Repos:                  repos,
 		Cache:                  memCache,
@@ -66,7 +69,6 @@ func Run(configPath string) {
 		EmailConfig:            cfg.Email,
 		AccessTokenTTL:         cfg.Auth.JWT.AccessTokenTTL,
 		RefreshTokenTTL:        cfg.Auth.JWT.RefreshTokenTTL,
-		FondyCallbackURL:       cfg.Payment.FondyCallbackURL,
 		CacheTTL:               int64(cfg.CacheTTL.Seconds()),
 		OtpGenerator:           otpGenerator,
 		VerificationCodeLength: cfg.Auth.VerificationCodeLength,

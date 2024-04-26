@@ -68,9 +68,9 @@ type Deps struct {
 	EmailSender  email.Sender
 	EmailConfig  config.EmailConfig
 	//StorageProvider        storage.Provider
-	AccessTokenTTL         time.Duration
-	RefreshTokenTTL        time.Duration
-	FondyCallbackURL       string
+	AccessTokenTTL  time.Duration
+	RefreshTokenTTL time.Duration
+	//FondyCallbackURL       string
 	CacheTTL               int64
 	OtpGenerator           otp.Generator
 	VerificationCodeLength int

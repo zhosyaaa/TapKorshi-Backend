@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/dgrijalva/jwt-go"
 	"math/rand"
+	"strconv"
 	"time"
 )
 
@@ -25,10 +26,10 @@ func NewManager(signingKey string) (*Manager, error) {
 
 	return &Manager{signingKey: signingKey}, nil
 }
-func (m *Manager) NewJWT(userId string, ttl time.Duration) (string, error) {
+func (m *Manager) NewJWT(userId uint, ttl time.Duration) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.StandardClaims{
 		ExpiresAt: time.Now().Add(ttl).Unix(),
-		Subject:   userId,
+		Subject:   strconv.Itoa(int(userId)),
 	})
 
 	return token.SignedString([]byte(m.signingKey))

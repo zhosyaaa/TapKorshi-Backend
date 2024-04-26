@@ -36,15 +36,14 @@ func (s *UsersService) SignUp(ctx context.Context, input UserSignUpInput) error 
 	}
 	verificationCode := s.otpGenerator.RandomSecret(s.verificationCodeLength)
 	user := domain.User{
-		Username:      input.Username,
-		Password_hash: passwordHash,
-		Phone:         input.Phone,
-		Email:         input.Email,
-		Created_at:    time.Now(),
-		LastVisitAt:   time.Now(),
-		Verification: domain.Verification{
-			Code: verificationCode,
-		},
+		Username:             input.Username,
+		Password_hash:        passwordHash,
+		Phone:                input.Phone,
+		Email:                input.Email,
+		Created_at:           time.Now(),
+		LastVisitAt:          time.Now(),
+		VerificationCode:     verificationCode,
+		VerificationVerified: false,
 	}
 	if err := s.repo.Create(user); err != nil {
 		if errors.Is(err, domain.ErrUserAlreadyExists) {

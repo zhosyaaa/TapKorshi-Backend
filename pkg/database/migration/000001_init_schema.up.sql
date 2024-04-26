@@ -62,5 +62,6 @@
     password_hash VARCHAR(255) NOT NULL,
     created_at TIMESTAMP NOT NULL,
     last_visit_at TIMESTAMP,
-    verification VARCHAR(255)
+    verification_code VARCHAR(255),
+    verification_verified BOOLEAN
 );

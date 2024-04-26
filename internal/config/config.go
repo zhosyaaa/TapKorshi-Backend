@@ -26,14 +26,24 @@ const (
 
 type (
 	Config struct {
-		HTTP     HTTPConfig
-		Database DatabaseConfig
-		Email    EmailConfig
-		Limiter  LimiterConfig
-		Auth     AuthConfig
+		Environment string
+		HTTP        HTTPConfig
+		Database    DatabaseConfig
+		Email       EmailConfig
+		Limiter     LimiterConfig
+		Auth        AuthConfig
+		SMTP        SMTPConfig
+		CacheTTL    time.Duration `mapstructure:"ttl"`
 	}
 
+	SMTPConfig struct {
+		Host string `mapstructure:"host"`
+		Port int    `mapstructure:"port"`
+		From string `mapstructure:"from"`
+		Pass string
+	}
 	HTTPConfig struct {
+		Host               string        `mapstructure:"host"`
 		Port               string        `mapstructure:"port"`
 		MaxHeaderBytes     int           `mapstructure:"maxHeaderBytes"`
 		ReadTimeout        time.Duration `mapstructure:"readTimeout"`
@@ -102,6 +112,10 @@ func Init(configsDir string) (*Config, error) {
 }
 
 func unmarshal(cfg *Config) error {
+	if err := viper.UnmarshalKey("cache.ttl", &cfg.CacheTTL); err != nil {
+		return err
+	}
+
 	if err := viper.UnmarshalKey("email.templates", &cfg.Email.Templates); err != nil {
 		return err
 	}
@@ -118,11 +132,19 @@ func unmarshal(cfg *Config) error {
 	if err := viper.UnmarshalKey("auth.verificationCodeLength", &cfg.Auth.VerificationCodeLength); err != nil {
 		return err
 	}
+	if err := viper.UnmarshalKey("smtp", &cfg.SMTP); err != nil {
+		return err
+	}
 
 	return viper.UnmarshalKey("http", &cfg.HTTP)
 }
 
 func setFromEnv(cfg *Config) {
+
+	cfg.HTTP.Host = os.Getenv("HTTP_HOST")
+
+	cfg.Environment = os.Getenv("APP_ENV")
+
 	cfg.Database.Name = os.Getenv("DB_NAME")
 	cfg.Database.Port = os.Getenv("DB_PORT")
 	cfg.Database.Host = os.Getenv("DB_HOST")
@@ -132,6 +154,7 @@ func setFromEnv(cfg *Config) {
 
 	cfg.Auth.PasswordSalt = os.Getenv("PASSWORD_SALT")
 	cfg.Auth.JWT.SigningKey = os.Getenv("JWT_SIGNING_KEY")
+	cfg.SMTP.Pass = os.Getenv("SMTP_PASSWORD")
 
 	fmt.Println(os.Getenv("DB_NAME"))
 	cfg.HTTP.Port = os.Getenv("HTTP_PORT")
