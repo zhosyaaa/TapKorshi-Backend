@@ -28,13 +28,17 @@ type (
 	Config struct {
 		HTTP     HTTPConfig
 		Database DatabaseConfig
+		Email    EmailConfig
+		Limiter  LimiterConfig
+		Auth     AuthConfig
 	}
 
 	HTTPConfig struct {
-		Port           string        `mapstructure:"port"`
-		MaxHeaderBytes int           `mapstructure:"maxHeaderBytes"`
-		ReadTimeout    time.Duration `mapstructure:"readTimeout"`
-		WriteTimeout   time.Duration `mapstructure:"writeTimeout"`
+		Port               string        `mapstructure:"port"`
+		MaxHeaderBytes     int           `mapstructure:"maxHeaderBytes"`
+		ReadTimeout        time.Duration `mapstructure:"readTimeout"`
+		WriteTimeout       time.Duration `mapstructure:"writeTimeout"`
+		MaxHeaderMegabytes int           `mapstructure:"maxHeaderBytes"`
 	}
 
 	DatabaseConfig struct {
@@ -45,6 +49,17 @@ type (
 		User     string
 		Password string
 	}
+	AuthConfig struct {
+		JWT                    JWTConfig
+		PasswordSalt           string
+		VerificationCodeLength int `mapstructure:"verificationCodeLength"`
+	}
+	JWTConfig struct {
+		AccessTokenTTL  time.Duration `mapstructure:"accessTokenTTL"`
+		RefreshTokenTTL time.Duration `mapstructure:"refreshTokenTTL"`
+		SigningKey      string
+	}
+
 	EmailConfig struct {
 		Templates EmailTemplates
 		Subjects  EmailSubjects
@@ -58,6 +73,12 @@ type (
 	EmailSubjects struct {
 		Verification       string `mapstructure:"verification_email"`
 		PurchaseSuccessful string `mapstructure:"purchase_successful"`
+	}
+
+	LimiterConfig struct {
+		RPS   int
+		Burst int
+		TTL   time.Duration
 	}
 )
 
@@ -81,6 +102,22 @@ func Init(configsDir string) (*Config, error) {
 }
 
 func unmarshal(cfg *Config) error {
+	if err := viper.UnmarshalKey("email.templates", &cfg.Email.Templates); err != nil {
+		return err
+	}
+	if err := viper.UnmarshalKey("email.subjects", &cfg.Email.Subjects); err != nil {
+		return err
+	}
+	if err := viper.UnmarshalKey("limiter", &cfg.Limiter); err != nil {
+		return err
+	}
+
+	if err := viper.UnmarshalKey("auth", &cfg.Auth.JWT); err != nil {
+		return err
+	}
+	if err := viper.UnmarshalKey("auth.verificationCodeLength", &cfg.Auth.VerificationCodeLength); err != nil {
+		return err
+	}
 
 	return viper.UnmarshalKey("http", &cfg.HTTP)
 }
@@ -92,6 +129,9 @@ func setFromEnv(cfg *Config) {
 	cfg.Database.User = os.Getenv("DB_USER")
 	cfg.Database.Password = os.Getenv("DB_PASSWORD")
 	cfg.Database.Sslmode = os.Getenv("DB_SSLMODE")
+
+	cfg.Auth.PasswordSalt = os.Getenv("PASSWORD_SALT")
+	cfg.Auth.JWT.SigningKey = os.Getenv("JWT_SIGNING_KEY")
 
 	fmt.Println(os.Getenv("DB_NAME"))
 	cfg.HTTP.Port = os.Getenv("HTTP_PORT")

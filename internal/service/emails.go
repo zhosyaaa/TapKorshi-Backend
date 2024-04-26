@@ -5,6 +5,7 @@ import (
 	"github.com/zhosyaaa/RoommateTap/internal/config"
 	"github.com/zhosyaaa/RoommateTap/pkg/cache"
 	"github.com/zhosyaaa/RoommateTap/pkg/email"
+	"github.com/zhosyaaa/RoommateTap/pkg/email/sendpulse"
 )
 
 const (
@@ -12,19 +13,24 @@ const (
 )
 
 type EmailService struct {
-	sender email.Sender
-	config config.EmailConfig
-	cache  cache.Cache
+	sender           email.Sender
+	config           config.EmailConfig
+	cache            cache.Cache
+	sendpulseClients map[uint]*sendpulse.Client
+}
+
+func NewEmailsService(sender email.Sender, config config.EmailConfig, cache cache.Cache) *EmailService {
+	return &EmailService{
+		sender:           sender,
+		config:           config,
+		cache:            cache,
+		sendpulseClients: make(map[uint]*sendpulse.Client),
+	}
 }
 
 // Structures used for templates.
 type verificationEmailInput struct {
 	VerificationLink string
-}
-
-type purchaseSuccessfulEmailInput struct {
-	Name       string
-	CourseName string
 }
 
 func (s *EmailService) SendUserVerificationEmail(input VerificationEmailInput) error {

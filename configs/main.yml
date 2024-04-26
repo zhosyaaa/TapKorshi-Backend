@@ -11,3 +11,16 @@ db:
   databaseSslmode: disable
   databaseUser: postgres
   databasePassword: 1079
+
+email:
+  templates:
+    verification_email: "./templates/verification_email.html"
+    purchase_successful: "./templates/purchase_successful.html"
+  subjects:
+    verification_email: "Спасибо за регистрацию, %s!"
+    purchase_successful: "Покупка прошла успешно!"
+
+limiter:
+  rps: 10
+  burst: 20
+  ttl: 10m

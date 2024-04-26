@@ -1,6 +1,16 @@
 package service
 
-import "context"
+import (
+	"context"
+	"github.com/zhosyaaa/RoommateTap/internal/config"
+	"github.com/zhosyaaa/RoommateTap/internal/repository"
+	"github.com/zhosyaaa/RoommateTap/pkg/auth"
+	"github.com/zhosyaaa/RoommateTap/pkg/cache"
+	"github.com/zhosyaaa/RoommateTap/pkg/email"
+	"github.com/zhosyaaa/RoommateTap/pkg/hash"
+	"github.com/zhosyaaa/RoommateTap/pkg/otp"
+	"time"
+)
 
 type UserSignUpInput struct {
 	Username string
@@ -33,6 +43,38 @@ type VerificationEmailInput struct {
 }
 
 type Emails interface {
-	SendStudentVerificationEmail(VerificationEmailInput) error
 	SendUserVerificationEmail(VerificationEmailInput) error
+}
+
+type Services struct {
+	Users  Users
+	Emails Emails
+}
+
+func NewServices(deps Deps) *Services {
+	emailsService := NewEmailsService(deps.EmailSender, deps.EmailConfig, deps.Cache)
+	usersService := NewUsersService(deps.Repos.Users, deps.Hasher, deps.TokenManager, deps.OtpGenerator, emailsService,
+		deps.AccessTokenTTL, deps.RefreshTokenTTL, deps.VerificationCodeLength, deps.Domain)
+	return &Services{
+		Users: usersService,
+	}
+}
+
+type Deps struct {
+	Repos        *repository.Repositories
+	Cache        cache.Cache
+	Hasher       hash.PasswordHasher
+	TokenManager auth.TokenManager
+	EmailSender  email.Sender
+	EmailConfig  config.EmailConfig
+	//StorageProvider        storage.Provider
+	AccessTokenTTL         time.Duration
+	RefreshTokenTTL        time.Duration
+	FondyCallbackURL       string
+	CacheTTL               int64
+	OtpGenerator           otp.Generator
+	VerificationCodeLength int
+	Environment            string
+	Domain                 string
+	//DNS                    dns.DomainManager
 }

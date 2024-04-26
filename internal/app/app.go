@@ -5,8 +5,16 @@ import (
 	"errors"
 	"fmt"
 	"github.com/zhosyaaa/RoommateTap/internal/config"
+	http2 "github.com/zhosyaaa/RoommateTap/internal/delivery/http"
+	"github.com/zhosyaaa/RoommateTap/internal/repository"
 	"github.com/zhosyaaa/RoommateTap/internal/server"
+	"github.com/zhosyaaa/RoommateTap/internal/service"
+	"github.com/zhosyaaa/RoommateTap/pkg/auth"
+	"github.com/zhosyaaa/RoommateTap/pkg/cache"
 	"github.com/zhosyaaa/RoommateTap/pkg/database"
+	"github.com/zhosyaaa/RoommateTap/pkg/email/smtp"
+	"github.com/zhosyaaa/RoommateTap/pkg/hash"
+	"github.com/zhosyaaa/RoommateTap/pkg/logger"
 	"log"
 	"net/http"
 	"os"
@@ -20,20 +28,55 @@ func Run(configPath string) {
 	if err != nil {
 		return
 	}
+	fmt.Println("cfg: ", cfg)
 
 	db, err := database.GetDBInstance(*cfg)
 	if err != nil {
 		log.Fatalf("Error initializing database connection: %v", err)
 	}
 
+	tokenManager, err := auth.NewManager(cfg.Auth.JWT.SigningKey)
+	if err != nil {
+		logger.Error(err)
+
+		return
+	}
 	// Check if the database connection is successful
 	err = db.Ping()
 	if err != nil {
 		log.Fatalf("Error pinging database: %v", err)
 	}
+	repos := repository.NewRepositories(db)
+	memCache := cache.NewMemoryCache()
+	hasher := hash.NewSHA1Hasher(cfg.Auth.PasswordSalt)
 
+	emailSender, err := smtp.NewSMTPSender(cfg.SMTP.From, cfg.SMTP.Pass, cfg.SMTP.Host, cfg.SMTP.Port)
+	if err != nil {
+		logger.Error(err)
+
+		return
+	}
+
+	services := service.NewServices(service.Deps{
+		Repos:                  repos,
+		Cache:                  memCache,
+		Hasher:                 hasher,
+		TokenManager:           tokenManager,
+		EmailSender:            emailSender,
+		EmailConfig:            cfg.Email,
+		AccessTokenTTL:         cfg.Auth.JWT.AccessTokenTTL,
+		RefreshTokenTTL:        cfg.Auth.JWT.RefreshTokenTTL,
+		FondyCallbackURL:       cfg.Payment.FondyCallbackURL,
+		CacheTTL:               int64(cfg.CacheTTL.Seconds()),
+		OtpGenerator:           otpGenerator,
+		VerificationCodeLength: cfg.Auth.VerificationCodeLength,
+		Environment:            cfg.Environment,
+		Domain:                 cfg.HTTP.Host,
+	})
+
+	handlers := http2.NewHandler(services, tokenManager)
 	// HTTP Server
-	srv := server.NewServer(cfg)
+	srv := server.NewServer(cfg, handlers.Init(cfg))
 
 	go func() {
 		if err := srv.Run(); !errors.Is(err, http.ErrServerClosed) {

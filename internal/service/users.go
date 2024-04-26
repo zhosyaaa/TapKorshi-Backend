@@ -12,7 +12,7 @@ import (
 )
 
 type UsersService struct {
-	repo         repository.UserRepository
+	repo         repository.User
 	hasher       hash.PasswordHasher
 	tokenManager auth.TokenManager
 	otpGenerator otp.Generator
@@ -25,7 +25,7 @@ type UsersService struct {
 	domain string
 }
 
-func NewUsersService(repo repository.UserRepository, hasher hash.PasswordHasher, tokenManager auth.TokenManager, otpGenerator otp.Generator, emailService Emails, accessTokenTTL time.Duration, refreshTokenTTL time.Duration, verificationCodeLength int, domain string) *UsersService {
+func NewUsersService(repo repository.User, hasher hash.PasswordHasher, tokenManager auth.TokenManager, otpGenerator otp.Generator, emailService Emails, accessTokenTTL time.Duration, refreshTokenTTL time.Duration, verificationCodeLength int, domain string) *UsersService {
 	return &UsersService{repo: repo, hasher: hasher, tokenManager: tokenManager, otpGenerator: otpGenerator, emailService: emailService, accessTokenTTL: accessTokenTTL, refreshTokenTTL: refreshTokenTTL, verificationCodeLength: verificationCodeLength, domain: domain}
 }
 
@@ -50,7 +50,6 @@ func (s *UsersService) SignUp(ctx context.Context, input UserSignUpInput) error 
 		if errors.Is(err, domain.ErrUserAlreadyExists) {
 			return err
 		}
-
 		return err
 	}
 	return s.emailService.SendUserVerificationEmail(VerificationEmailInput{
@@ -78,13 +77,13 @@ func (s *UsersService) RefreshTokens(ctx context.Context, refreshToken string) (
 	return Tokens{}, nil
 }
 
-func (s *UsersService) createSession(ctx context.Context, userId primitive.ObjectID) (Tokens, error) {
+func (s *UsersService) createSession(ctx context.Context, userId uint) (Tokens, error) {
 	var (
 		res Tokens
 		err error
 	)
 
-	res.AccessToken, err = s.tokenManager.NewJWT(userId.Hex(), s.accessTokenTTL)
+	res.AccessToken, err = s.tokenManager.NewJWT(userId, s.accessTokenTTL)
 	if err != nil {
 		return res, err
 	}
@@ -94,12 +93,12 @@ func (s *UsersService) createSession(ctx context.Context, userId primitive.Objec
 		return res, err
 	}
 
-	session := domain.Session{
-		RefreshToken: res.RefreshToken,
-		ExpiresAt:    time.Now().Add(s.refreshTokenTTL),
-	}
+	//session := domain.Session{
+	//	RefreshToken: res.RefreshToken,
+	//	ExpiresAt:    time.Now().Add(s.refreshTokenTTL),
+	//}
 
-	err = s.repo.SetSession(ctx, userId, session)
+	//err = s.repo.SetSession(ctx, userId, session)
 
 	return res, err
 }
