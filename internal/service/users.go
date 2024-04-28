@@ -25,14 +25,27 @@ type UsersService struct {
 	domain string
 }
 
+func (s *UsersService) Verify(ctx context.Context, userID uint, hash string) error {
+	err := s.repo.Verify(userID, hash)
+	if err != nil {
+		if errors.Is(err, domain.ErrVerificationCodeInvalid) {
+			return err
+		}
+
+		return err
+	}
+
+	return nil
+}
+
 func NewUsersService(repo repository.User, hasher hash.PasswordHasher, tokenManager auth.TokenManager, otpGenerator otp.Generator, emailService Emails, accessTokenTTL time.Duration, refreshTokenTTL time.Duration, verificationCodeLength int, domain string) *UsersService {
 	return &UsersService{repo: repo, hasher: hasher, tokenManager: tokenManager, otpGenerator: otpGenerator, emailService: emailService, accessTokenTTL: accessTokenTTL, refreshTokenTTL: refreshTokenTTL, verificationCodeLength: verificationCodeLength, domain: domain}
 }
 
-func (s *UsersService) SignUp(ctx context.Context, input UserSignUpInput) error {
+func (s *UsersService) SignUp(ctx context.Context, input UserSignUpInput) (Tokens, error) {
 	passwordHash, err := s.hasher.Hash(input.Password)
 	if err != nil {
-		return err
+		return Tokens{}, err
 	}
 	verificationCode := s.otpGenerator.RandomSecret(s.verificationCodeLength)
 	user := domain.User{
@@ -45,17 +58,19 @@ func (s *UsersService) SignUp(ctx context.Context, input UserSignUpInput) error 
 		VerificationCode:     verificationCode,
 		VerificationVerified: false,
 	}
-	if err := s.repo.Create(user); err != nil {
+	if user, err = s.repo.Create(user); err != nil {
 		if errors.Is(err, domain.ErrUserAlreadyExists) {
-			return err
+			return Tokens{}, err
 		}
-		return err
+		return Tokens{}, err
 	}
-	return s.emailService.SendUserVerificationEmail(VerificationEmailInput{
+	s.emailService.SendUserVerificationEmail(VerificationEmailInput{
 		Email:            user.Email,
 		Name:             user.Username,
 		VerificationCode: verificationCode,
+		Domain:           "localhost:8000",
 	})
+	return s.createSession(ctx, user.ID)
 }
 func (s *UsersService) SignIn(ctx context.Context, input UserSignInInput) (Tokens, error) {
 	passwordHash, err := s.hasher.Hash(input.Password)

@@ -6,12 +6,13 @@ import (
 )
 
 type User interface {
-	Create(user domain.User) error
+	Create(user domain.User) (domain.User, error)
 	Update(user domain.User) error
 	Delete(userid uint) error
 	GetByRefreshToken(refreshToken string) (domain.User, error)
 	GetByCredentials(email, password string) (user domain.User, err error)
 	SetSession(userID uint, session domain.Session) error
+	Verify(userID uint, code string) error
 }
 
 type Repositories struct {

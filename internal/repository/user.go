@@ -17,21 +17,25 @@ func (r *UserRepository) SetSession(userID uint, session domain.Session) error {
 	return nil
 }
 
-func (r *UserRepository) Create(user domain.User) error {
+func (r *UserRepository) Create(user domain.User) (domain.User, error) {
 	query := `
         INSERT INTO users (
             email, username, phone, password_hash, created_at, last_visit_at, verification_code, verification_verified
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        RETURNING id
     `
-	_, err := r.db.Exec(
+	var userID uint
+	err := r.db.QueryRow(
 		query,
 		user.Email, user.Username, user.Phone, user.Password_hash,
 		user.Created_at, user.LastVisitAt, user.VerificationCode, user.VerificationVerified,
-	)
+	).Scan(&userID)
 	if err != nil {
-		return err
+		return domain.User{}, err
 	}
-	return nil
+
+	user.ID = userID
+	return user, nil
 }
 
 func (r *UserRepository) Update(user domain.User) error {
@@ -91,4 +95,26 @@ func (r *UserRepository) GetByCredentials(email, password string) (domain.User, 
 		return domain.User{}, err
 	}
 	return user, nil
+}
+func (r *UserRepository) Verify(userID uint, code string) error {
+	query := `
+		UPDATE users 
+		SET verification_verified = true, verification_code = ''
+		WHERE id = $1 AND verification_code = $2
+	`
+	res, err := r.db.Exec(query, userID, code)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return domain.ErrVerificationCodeInvalid
+	}
+
+	return nil
 }

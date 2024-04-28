@@ -14,19 +14,18 @@ func (h *Handler) initUsersRoutes(api *gin.RouterGroup) {
 		users.POST("/sign-up", h.userSignUp)
 		users.POST("/sign-in", h.userSignIn)
 		users.POST("/auth/refresh", h.userRefresh)
-
-		//authenticated := users.Group("/", h.userIdentity)
-		//{
-		//	authenticated.POST("/verify/:code", h.userVerify)
-		//
-		//	schools := authenticated.Group("/schools/")
-		//	{
-		//		schools.POST("", h.userCreateSchool)
-		//		schools.GET("", h.userGetSchools)
-		//		schools.GET("/:id", h.userGetSchoolById)
-		//		schools.PUT("/:id", h.userUpdateSchool)
-		//	}
-		//}
+		authenticated := users.Group("/", h.userIdentity)
+		{
+			authenticated.GET("/verify/:code", h.userVerify)
+			//
+			//	schools := authenticated.Group("/schools/")
+			//	{
+			//		schools.POST("", h.userCreateSchool)
+			//		schools.GET("", h.userGetSchools)
+			//		schools.GET("/:id", h.userGetSchoolById)
+			//		schools.PUT("/:id", h.userUpdateSchool)
+			//	}
+		}
 	}
 }
 
@@ -45,12 +44,13 @@ func (h *Handler) userSignUp(c *gin.Context) {
 		return
 	}
 
-	if err := h.services.Users.SignUp(c.Request.Context(), service.UserSignUpInput{
+	tokens, err := h.services.Users.SignUp(c.Request.Context(), service.UserSignUpInput{
 		Username: inp.Name,
 		Email:    inp.Email,
 		Phone:    inp.Phone,
 		Password: inp.Password,
-	}); err != nil {
+	})
+	if err != nil {
 		if errors.Is(err, domain.ErrUserAlreadyExists) {
 			newResponse(c, http.StatusBadRequest, err.Error())
 
@@ -62,7 +62,7 @@ func (h *Handler) userSignUp(c *gin.Context) {
 		return
 	}
 
-	c.Status(http.StatusCreated)
+	c.JSON(http.StatusCreated, gin.H{"token": tokens})
 }
 
 type signInInput struct {
@@ -128,4 +128,34 @@ func (h *Handler) userRefresh(c *gin.Context) {
 		AccessToken:  res.AccessToken,
 		RefreshToken: res.RefreshToken,
 	})
+}
+
+func (h *Handler) userVerify(c *gin.Context) {
+	code := c.Param("code")
+	if code == "" {
+		newResponse(c, http.StatusBadRequest, "code is empty")
+
+		return
+	}
+
+	id, err := getUserId(c)
+	if err != nil {
+		newResponse(c, http.StatusInternalServerError, err.Error())
+
+		return
+	}
+
+	if err := h.services.Users.Verify(c.Request.Context(), id, code); err != nil {
+		if errors.Is(err, domain.ErrVerificationCodeInvalid) {
+			newResponse(c, http.StatusBadRequest, err.Error())
+
+			return
+		}
+
+		newResponse(c, http.StatusInternalServerError, err.Error())
+
+		return
+	}
+
+	c.JSON(http.StatusOK, response{"success"})
 }

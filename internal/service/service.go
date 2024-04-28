@@ -29,10 +29,10 @@ type Tokens struct {
 }
 
 type Users interface {
-	SignUp(ctx context.Context, input UserSignUpInput) error
+	SignUp(ctx context.Context, input UserSignUpInput) (Tokens, error)
 	SignIn(ctx context.Context, input UserSignInInput) (Tokens, error)
 	RefreshTokens(ctx context.Context, refreshToken string) (Tokens, error)
-	//Verify(ctx context.Context, userID primitive.ObjectID, hash string) error
+	Verify(ctx context.Context, userID uint, hash string) error
 }
 
 type VerificationEmailInput struct {
@@ -56,7 +56,8 @@ func NewServices(deps Deps) *Services {
 	usersService := NewUsersService(deps.Repos.Users, deps.Hasher, deps.TokenManager, deps.OtpGenerator, emailsService,
 		deps.AccessTokenTTL, deps.RefreshTokenTTL, deps.VerificationCodeLength, deps.Domain)
 	return &Services{
-		Users: usersService,
+		Users:  usersService,
+		Emails: emailsService,
 	}
 }
 
