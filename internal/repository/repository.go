@@ -9,7 +9,6 @@ type User interface {
 	Create(user domain.User) (domain.User, error)
 	Update(user domain.User) error
 	Delete(userid uint) error
-	GetByRefreshToken(refreshToken string) (domain.User, error)
 	GetByCredentials(email, password string) (user domain.User, err error)
 	Verify(userID uint, code string) error
 }

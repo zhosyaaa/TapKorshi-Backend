@@ -40,16 +40,17 @@ func (h *Handler) userSignUp(c *gin.Context) {
 	var inp userSignUpInput
 	if err := c.BindJSON(&inp); err != nil {
 		newResponse(c, http.StatusBadRequest, "invalid input body")
-
 		return
 	}
 
+	ip := c.ClientIP()
+	fingerprint := c.GetHeader("X-Fingerprint")
 	tokens, sessionID, err := h.services.Users.SignUp(c.Request.Context(), service.UserSignUpInput{
 		Username: inp.Name,
 		Email:    inp.Email,
 		Phone:    inp.Phone,
 		Password: inp.Password,
-	})
+	}, fingerprint, ip)
 	if err != nil {
 		if errors.Is(err, domain.ErrUserAlreadyExists) {
 			newResponse(c, http.StatusBadRequest, err.Error())
@@ -82,11 +83,12 @@ func (h *Handler) userSignIn(c *gin.Context) {
 
 		return
 	}
-
+	ip := c.ClientIP()
+	fingerprint := c.GetHeader("X-Fingerprint")
 	res, sessionID, err := h.services.Users.SignIn(c.Request.Context(), service.UserSignInInput{
 		Email:    inp.Email,
 		Password: inp.Password,
-	})
+	}, fingerprint, ip)
 	if err != nil {
 		if errors.Is(err, domain.ErrUserNotFound) {
 			newResponse(c, http.StatusBadRequest, err.Error())
@@ -113,17 +115,17 @@ func (h *Handler) userRefresh(c *gin.Context) {
 	var inp refreshInput
 	if err := c.BindJSON(&inp); err != nil {
 		newResponse(c, http.StatusBadRequest, "invalid input body")
-
 		return
 	}
-
-	res, err := h.services.Users.RefreshTokens(c.Request.Context(), inp.Token)
+	sessionID, err := c.Cookie("sessionID")
+	//fingerprint := c.GetHeader("X-Fingerprint")
+	fingerprint := "testttt"
+	res, sessionID, err := h.services.Users.RefreshTokens(sessionID, inp.Token, fingerprint)
 	if err != nil {
 		newResponse(c, http.StatusInternalServerError, err.Error())
-
 		return
 	}
-
+	c.SetCookie("sessionID", sessionID, 3600, "/", "", false, true)
 	c.JSON(http.StatusOK, tokenResponse{
 		AccessToken:  res.AccessToken,
 		RefreshToken: res.RefreshToken,

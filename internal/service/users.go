@@ -42,7 +42,7 @@ func NewUsersService(repo repository.User, hasher hash.PasswordHasher, tokenMana
 	return &UsersService{repo: repo, hasher: hasher, tokenManager: tokenManager, otpGenerator: otpGenerator, emailService: emailService, sessionService: sessionService, accessTokenTTL: accessTokenTTL, refreshTokenTTL: refreshTokenTTL, verificationCodeLength: verificationCodeLength, domain: domain}
 }
 
-func (s *UsersService) SignUp(ctx context.Context, input UserSignUpInput) (Tokens, string, error) {
+func (s *UsersService) SignUp(ctx context.Context, input UserSignUpInput, Fingerprint, IP string) (Tokens, string, error) {
 	passwordHash, err := s.hasher.Hash(input.Password)
 	if err != nil {
 		return Tokens{}, "", err
@@ -70,10 +70,10 @@ func (s *UsersService) SignUp(ctx context.Context, input UserSignUpInput) (Token
 		VerificationCode: verificationCode,
 		Domain:           "localhost:8000",
 	})
-	return s.createSession(ctx, user.ID, user.Username)
+	return s.createSession(user.ID, Fingerprint, IP)
 }
 
-func (s *UsersService) SignIn(ctx context.Context, input UserSignInInput) (Tokens, string, error) {
+func (s *UsersService) SignIn(ctx context.Context, input UserSignInInput, Fingerprint, IP string) (Tokens, string, error) {
 	passwordHash, err := s.hasher.Hash(input.Password)
 	if err != nil {
 		return Tokens{}, "", err
@@ -86,15 +86,10 @@ func (s *UsersService) SignIn(ctx context.Context, input UserSignInInput) (Token
 
 		return Tokens{}, "", err
 	}
-	return s.createSession(ctx, user.ID, user.Username)
-}
-func (s *UsersService) RefreshTokens(ctx context.Context, refreshToken string) (Tokens, error) {
-
-	// тут надо менять!!!
-	return Tokens{}, nil
+	return s.createSession(user.ID, Fingerprint, IP)
 }
 
-func (s *UsersService) createSession(ctx context.Context, userId uint, username string) (Tokens, string, error) {
+func (s *UsersService) createSession(userId uint, fingerprint, ip string) (Tokens, string, error) {
 	var (
 		res Tokens
 		err error
@@ -109,8 +104,37 @@ func (s *UsersService) createSession(ctx context.Context, userId uint, username 
 	if err != nil {
 		return res, "", err
 	}
-	expiresAt := time.Now().Add(s.refreshTokenTTL)
-	sessionId, _, err := s.sessionService.CreateSession(userId, username, expiresAt)
+	session := &domain.Session{
+		Userid:       userId,
+		RefreshToken: res.RefreshToken,
+		Fingerprint:  fingerprint,
+		Ip:           ip,
+		ExpiresAt:    time.Now().Add(s.refreshTokenTTL),
+	}
+	sessionId, err := s.sessionService.CreateSession(session)
 
 	return res, sessionId, err
+}
+func (s *UsersService) RefreshTokens(sessionId, token, fingerprint string) (Tokens, string, error) {
+	var (
+		res       Tokens
+		err       error
+		sessionID string
+	)
+	session, err := s.sessionService.GetSession(sessionId)
+	if err != nil {
+		return res, sessionID, err
+	}
+	if time.Now().After(session.ExpiresAt) {
+		return res, sessionID, errors.New("Refresh token expired")
+	}
+	if session.RefreshToken != token || session.Fingerprint != fingerprint {
+		return res, sessionID, errors.New("invalid refresh token or fingerprint")
+	}
+
+	err = s.sessionService.DeleteSession(sessionId)
+	if err != nil {
+		return res, sessionID, err
+	}
+	return s.createSession(session.Userid, fingerprint, session.Ip)
 }

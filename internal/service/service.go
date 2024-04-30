@@ -31,10 +31,10 @@ type Tokens struct {
 }
 
 type Users interface {
-	SignUp(ctx context.Context, input UserSignUpInput) (Tokens, string, error)
-	SignIn(ctx context.Context, input UserSignInInput) (Tokens, string, error)
-	RefreshTokens(ctx context.Context, refreshToken string) (Tokens, error)
+	SignUp(ctx context.Context, input UserSignUpInput, Fingerprint, IP string) (Tokens, string, error)
+	SignIn(ctx context.Context, input UserSignInInput, Fingerprint, IP string) (Tokens, string, error)
 	Verify(ctx context.Context, userID uint, hash string) error
+	RefreshTokens(sessionId, token, fingerprint string) (Tokens, string, error)
 }
 
 type VerificationEmailInput struct {
@@ -55,8 +55,9 @@ type Services struct {
 }
 
 type Sessions interface {
-	CreateSession(userID uint, username string, expiresAt time.Time) (string, *domain.Session, error)
+	CreateSession(session *domain.Session) (string, error)
 	GetSession(sessionID string) (*domain.Session, error)
+	DeleteSession(sessionID string) error
 }
 
 func NewServices(deps Deps) *Services {

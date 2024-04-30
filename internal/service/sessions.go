@@ -20,23 +20,19 @@ type SessionService struct {
 func NewSessionService(redisClient *redis.Client) *SessionService {
 	return &SessionService{redisClient: redisClient}
 }
-func (s *SessionService) CreateSession(userID uint, username string, expiresAt time.Time) (string, *domain.Session, error) {
+func (s *SessionService) CreateSession(session *domain.Session) (string, error) {
 	sessionID := generateSessionID()
-	session := &domain.Session{
-		Userid:    userID,
-		Username:  username,
-		ExpiresAt: expiresAt,
-	}
+
 	sessionJSON, err := json.Marshal(session)
 	if err != nil {
-		return "", nil, fmt.Errorf("failed to marshal session: %w", err)
+		return "", fmt.Errorf("failed to marshal session: %w", err)
 	}
 	ctx := context.Background()
-	err = s.redisClient.Set(ctx, sessionID, sessionJSON, expiresAt.Sub(time.Now())).Err()
+	err = s.redisClient.Set(ctx, sessionID, sessionJSON, session.ExpiresAt.Sub(time.Now())).Err()
 	if err != nil {
-		return "", nil, fmt.Errorf("failed to set session in Redis: %w", err)
+		return "", fmt.Errorf("failed to set session in Redis: %w", err)
 	}
-	return sessionID, session, nil
+	return sessionID, nil
 }
 
 func (s SessionService) GetSession(sessionID string) (*domain.Session, error) {
@@ -66,4 +62,15 @@ func generateSessionID() string {
 	}
 	randomHex := hex.EncodeToString(randomBytes)
 	return strconv.FormatInt(timestamp, 10) + randomHex
+}
+func (s *SessionService) DeleteSession(sessionID string) error {
+	ctx := context.Background()
+	err := s.redisClient.Del(ctx, sessionID).Err()
+	if err != nil {
+		if err == redis.Nil {
+			return fmt.Errorf("session not found")
+		}
+		return fmt.Errorf("failed to delete session from Redis: %w", err)
+	}
+	return nil
 }

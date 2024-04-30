@@ -3,7 +3,6 @@ package repository
 import (
 	"database/sql"
 	"github.com/zhosyaaa/RoommateTap/internal/domain"
-	"time"
 )
 
 type UserRepository struct {
@@ -58,23 +57,6 @@ func (r *UserRepository) Delete(userId uint) error {
 		return err
 	}
 	return nil
-}
-
-func (r *UserRepository) GetByRefreshToken(refreshToken string) (domain.User, error) {
-	var user domain.User
-	query := `
-		SELECT id, email, username, phone, password_hash, created_at, last_visit_at, verification_code, verification_verified
-		FROM users 
-		WHERE refresh_token = $1 AND expires_at > $2
-	`
-	err := r.db.QueryRow(query, refreshToken, time.Now()).Scan(
-		&user.ID, &user.Email, &user.Username, &user.Phone,
-		&user.Password_hash, &user.Created_at, &user.LastVisitAt, &user.VerificationCode, &user.VerificationVerified,
-	)
-	if err != nil {
-		return domain.User{}, err
-	}
-	return user, nil
 }
 
 func (r *UserRepository) GetByCredentials(email, password string) (domain.User, error) {
