@@ -3,6 +3,7 @@ package domain
 import "time"
 
 type Session struct {
-	RefreshToken string    `json:"refreshToken" bson:"refreshToken"`
-	ExpiresAt    time.Time `json:"expiresAt" bson:"expiresAt"`
+	Userid    uint      `json:"userid"`
+	Username  string    `json:"username"`
+	ExpiresAt time.Time `json:"expiresAt"`
 }

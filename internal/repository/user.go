@@ -13,9 +13,6 @@ type UserRepository struct {
 func NewUserRepository(db *sql.DB) *UserRepository {
 	return &UserRepository{db: db}
 }
-func (r *UserRepository) SetSession(userID uint, session domain.Session) error {
-	return nil
-}
 
 func (r *UserRepository) Create(user domain.User) (domain.User, error) {
 	query := `

@@ -19,7 +19,7 @@ dropdb:
 #	protoc ./internal/proto/*.proto --go_out=. --go-grpc_out=.
 
 redis:
-	docker run -d -p 6379:6379 --name my-redis-container redis
+	docker run -d -p 6379:6379 --name redis redis
 
 
 .PHONY: postgres createdb dropdb

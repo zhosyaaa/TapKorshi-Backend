@@ -33,6 +33,7 @@ type (
 		Limiter     LimiterConfig
 		Auth        AuthConfig
 		SMTP        SMTPConfig
+		Redis       RedisConfig
 		CacheTTL    time.Duration `mapstructure:"ttl"`
 	}
 
@@ -51,6 +52,11 @@ type (
 		MaxHeaderMegabytes int           `mapstructure:"maxHeaderBytes"`
 	}
 
+	RedisConfig struct {
+		Address  string
+		Password string
+		DB       string
+	}
 	DatabaseConfig struct {
 		Name     string
 		Host     string
@@ -155,6 +161,10 @@ func setFromEnv(cfg *Config) {
 	cfg.Auth.PasswordSalt = os.Getenv("PASSWORD_SALT")
 	cfg.Auth.JWT.SigningKey = os.Getenv("JWT_SIGNING_KEY")
 	cfg.SMTP.Pass = os.Getenv("SMTP_PASSWORD")
+
+	cfg.Redis.DB = os.Getenv("REDIS_DB")
+	cfg.Redis.Address = os.Getenv("REDIS_ADDRESS")
+	cfg.Redis.Password = os.Getenv("REDIS_PASSWORD")
 
 	fmt.Println(os.Getenv("DB_NAME"))
 	cfg.HTTP.Port = os.Getenv("HTTP_PORT")

@@ -12,6 +12,7 @@ import (
 	"github.com/zhosyaaa/RoommateTap/pkg/auth"
 	"github.com/zhosyaaa/RoommateTap/pkg/cache"
 	"github.com/zhosyaaa/RoommateTap/pkg/database"
+	"github.com/zhosyaaa/RoommateTap/pkg/database/redis"
 	"github.com/zhosyaaa/RoommateTap/pkg/email/smtp"
 	"github.com/zhosyaaa/RoommateTap/pkg/hash"
 	"github.com/zhosyaaa/RoommateTap/pkg/logger"
@@ -48,6 +49,12 @@ func Run(configPath string) {
 	if err != nil {
 		log.Fatalf("Error pinging database: %v", err)
 	}
+	rdb := redis.NewRedisClient(cfg.Redis)
+
+	fmt.Println("-------------------")
+	fmt.Println("rdb: ", rdb)
+	fmt.Println("-------------------")
+
 	repos := repository.NewRepositories(db)
 	memCache := cache.NewMemoryCache()
 	hasher := hash.NewSHA1Hasher(cfg.Auth.PasswordSalt)
@@ -74,6 +81,7 @@ func Run(configPath string) {
 		VerificationCodeLength: cfg.Auth.VerificationCodeLength,
 		Environment:            cfg.Environment,
 		Domain:                 cfg.HTTP.Host,
+		RedisClient:            rdb,
 	})
 
 	handlers := http2.NewHandler(services, tokenManager)

@@ -12,12 +12,12 @@ import (
 )
 
 type UsersService struct {
-	repo         repository.User
-	hasher       hash.PasswordHasher
-	tokenManager auth.TokenManager
-	otpGenerator otp.Generator
-	emailService Emails
-
+	repo                   repository.User
+	hasher                 hash.PasswordHasher
+	tokenManager           auth.TokenManager
+	otpGenerator           otp.Generator
+	emailService           Emails
+	sessionService         Sessions
 	accessTokenTTL         time.Duration
 	refreshTokenTTL        time.Duration
 	verificationCodeLength int
@@ -38,14 +38,14 @@ func (s *UsersService) Verify(ctx context.Context, userID uint, hash string) err
 	return nil
 }
 
-func NewUsersService(repo repository.User, hasher hash.PasswordHasher, tokenManager auth.TokenManager, otpGenerator otp.Generator, emailService Emails, accessTokenTTL time.Duration, refreshTokenTTL time.Duration, verificationCodeLength int, domain string) *UsersService {
-	return &UsersService{repo: repo, hasher: hasher, tokenManager: tokenManager, otpGenerator: otpGenerator, emailService: emailService, accessTokenTTL: accessTokenTTL, refreshTokenTTL: refreshTokenTTL, verificationCodeLength: verificationCodeLength, domain: domain}
+func NewUsersService(repo repository.User, hasher hash.PasswordHasher, tokenManager auth.TokenManager, otpGenerator otp.Generator, emailService Emails, sessionService Sessions, accessTokenTTL time.Duration, refreshTokenTTL time.Duration, verificationCodeLength int, domain string) *UsersService {
+	return &UsersService{repo: repo, hasher: hasher, tokenManager: tokenManager, otpGenerator: otpGenerator, emailService: emailService, sessionService: sessionService, accessTokenTTL: accessTokenTTL, refreshTokenTTL: refreshTokenTTL, verificationCodeLength: verificationCodeLength, domain: domain}
 }
 
-func (s *UsersService) SignUp(ctx context.Context, input UserSignUpInput) (Tokens, error) {
+func (s *UsersService) SignUp(ctx context.Context, input UserSignUpInput) (Tokens, string, error) {
 	passwordHash, err := s.hasher.Hash(input.Password)
 	if err != nil {
-		return Tokens{}, err
+		return Tokens{}, "", err
 	}
 	verificationCode := s.otpGenerator.RandomSecret(s.verificationCodeLength)
 	user := domain.User{
@@ -60,9 +60,9 @@ func (s *UsersService) SignUp(ctx context.Context, input UserSignUpInput) (Token
 	}
 	if user, err = s.repo.Create(user); err != nil {
 		if errors.Is(err, domain.ErrUserAlreadyExists) {
-			return Tokens{}, err
+			return Tokens{}, "", err
 		}
-		return Tokens{}, err
+		return Tokens{}, "", err
 	}
 	s.emailService.SendUserVerificationEmail(VerificationEmailInput{
 		Email:            user.Email,
@@ -70,28 +70,31 @@ func (s *UsersService) SignUp(ctx context.Context, input UserSignUpInput) (Token
 		VerificationCode: verificationCode,
 		Domain:           "localhost:8000",
 	})
-	return s.createSession(ctx, user.ID)
+	return s.createSession(ctx, user.ID, user.Username)
 }
-func (s *UsersService) SignIn(ctx context.Context, input UserSignInInput) (Tokens, error) {
+
+func (s *UsersService) SignIn(ctx context.Context, input UserSignInInput) (Tokens, string, error) {
 	passwordHash, err := s.hasher.Hash(input.Password)
 	if err != nil {
-		return Tokens{}, err
+		return Tokens{}, "", err
 	}
 	user, err := s.repo.GetByCredentials(input.Email, passwordHash)
 	if err != nil {
 		if errors.Is(err, domain.ErrUserNotFound) {
-			return Tokens{}, err
+			return Tokens{}, "", err
 		}
 
-		return Tokens{}, err
+		return Tokens{}, "", err
 	}
-	return s.createSession(ctx, user.ID)
+	return s.createSession(ctx, user.ID, user.Username)
 }
 func (s *UsersService) RefreshTokens(ctx context.Context, refreshToken string) (Tokens, error) {
+
+	// тут надо менять!!!
 	return Tokens{}, nil
 }
 
-func (s *UsersService) createSession(ctx context.Context, userId uint) (Tokens, error) {
+func (s *UsersService) createSession(ctx context.Context, userId uint, username string) (Tokens, string, error) {
 	var (
 		res Tokens
 		err error
@@ -99,20 +102,15 @@ func (s *UsersService) createSession(ctx context.Context, userId uint) (Tokens, 
 
 	res.AccessToken, err = s.tokenManager.NewJWT(userId, s.accessTokenTTL)
 	if err != nil {
-		return res, err
+		return res, "", err
 	}
 
 	res.RefreshToken, err = s.tokenManager.NewRefreshToken()
 	if err != nil {
-		return res, err
+		return res, "", err
 	}
+	expiresAt := time.Now().Add(s.refreshTokenTTL)
+	sessionId, _, err := s.sessionService.CreateSession(userId, username, expiresAt)
 
-	//session := domain.Session{
-	//	RefreshToken: res.RefreshToken,
-	//	ExpiresAt:    time.Now().Add(s.refreshTokenTTL),
-	//}
-
-	//err = s.repo.SetSession(ctx, userId, session)
-
-	return res, err
+	return res, sessionId, err
 }

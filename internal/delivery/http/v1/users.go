@@ -44,7 +44,7 @@ func (h *Handler) userSignUp(c *gin.Context) {
 		return
 	}
 
-	tokens, err := h.services.Users.SignUp(c.Request.Context(), service.UserSignUpInput{
+	tokens, sessionID, err := h.services.Users.SignUp(c.Request.Context(), service.UserSignUpInput{
 		Username: inp.Name,
 		Email:    inp.Email,
 		Phone:    inp.Phone,
@@ -61,7 +61,7 @@ func (h *Handler) userSignUp(c *gin.Context) {
 
 		return
 	}
-
+	c.SetCookie("sessionID", sessionID, 3600, "/", "", false, true)
 	c.JSON(http.StatusCreated, gin.H{"token": tokens})
 }
 
@@ -83,7 +83,7 @@ func (h *Handler) userSignIn(c *gin.Context) {
 		return
 	}
 
-	res, err := h.services.Users.SignIn(c.Request.Context(), service.UserSignInInput{
+	res, sessionID, err := h.services.Users.SignIn(c.Request.Context(), service.UserSignInInput{
 		Email:    inp.Email,
 		Password: inp.Password,
 	})
@@ -98,7 +98,7 @@ func (h *Handler) userSignIn(c *gin.Context) {
 
 		return
 	}
-
+	c.SetCookie("sessionID", sessionID, 3600, "/", "", false, true)
 	c.JSON(http.StatusOK, tokenResponse{
 		AccessToken:  res.AccessToken,
 		RefreshToken: res.RefreshToken,
