@@ -7,19 +7,18 @@ import (
 	"github.com/zhosyaaa/RoommateTap/internal/service"
 	"github.com/zhosyaaa/RoommateTap/pkg/auth"
 	"github.com/zhosyaaa/RoommateTap/pkg/limiter"
+	"golang.org/x/oauth2"
 	"net/http"
 )
 
 type Handler struct {
 	services     *service.Services
 	tokenManager auth.TokenManager
+	cfg          oauth2.Config
 }
 
-func NewHandler(services *service.Services, tokenManager auth.TokenManager) *Handler {
-	return &Handler{
-		services:     services,
-		tokenManager: tokenManager,
-	}
+func NewHandler(services *service.Services, tokenManager auth.TokenManager, cfg oauth2.Config) *Handler {
+	return &Handler{services: services, tokenManager: tokenManager, cfg: cfg}
 }
 
 func (h *Handler) Init(cfg *config.Config) *gin.Engine {
@@ -53,7 +52,7 @@ func (h *Handler) Init(cfg *config.Config) *gin.Engine {
 }
 
 func (h *Handler) initAPI(router *gin.Engine) {
-	handlerV1 := v1.NewHandler(h.services, h.tokenManager)
+	handlerV1 := v1.NewHandler(h.services, h.tokenManager, h.cfg)
 	api := router.Group("/api")
 	{
 		handlerV1.Init(api)

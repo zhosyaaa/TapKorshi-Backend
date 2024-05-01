@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"github.com/joho/godotenv"
 	"github.com/spf13/viper"
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/google"
 	"log"
 	"os"
 	"time"
@@ -26,15 +28,17 @@ const (
 
 type (
 	Config struct {
-		Environment string
-		HTTP        HTTPConfig
-		Database    DatabaseConfig
-		Email       EmailConfig
-		Limiter     LimiterConfig
-		Auth        AuthConfig
-		SMTP        SMTPConfig
-		Redis       RedisConfig
-		CacheTTL    time.Duration `mapstructure:"ttl"`
+		Environment       string
+		HTTP              HTTPConfig
+		Database          DatabaseConfig
+		Email             EmailConfig
+		Limiter           LimiterConfig
+		Auth              AuthConfig
+		SMTP              SMTPConfig
+		Redis             RedisConfig
+		GoogleLoginConfig oauth2.Config
+
+		CacheTTL time.Duration `mapstructure:"ttl"`
 	}
 
 	SMTPConfig struct {
@@ -113,7 +117,14 @@ func Init(configsDir string) (*Config, error) {
 	}
 	setFromEnv(&cfg)
 
-	fmt.Println(cfg)
+	cfg.GoogleLoginConfig = oauth2.Config{
+		RedirectURL:  "http://localhost:8000/api/v1/users/google_callback",
+		ClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
+		ClientSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),
+		Scopes: []string{"https://www.googleapis.com/auth/userinfo.email",
+			"https://www.googleapis.com/auth/userinfo.profile"},
+		Endpoint: google.Endpoint,
+	}
 	return &cfg, nil
 }
 

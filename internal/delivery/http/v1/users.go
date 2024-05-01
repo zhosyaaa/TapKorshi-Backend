@@ -1,10 +1,12 @@
 package v1
 
 import (
+	"context"
 	"errors"
 	"github.com/gin-gonic/gin"
 	"github.com/zhosyaaa/RoommateTap/internal/domain"
 	"github.com/zhosyaaa/RoommateTap/internal/service"
+	"io/ioutil"
 	"net/http"
 )
 
@@ -13,6 +15,10 @@ func (h *Handler) initUsersRoutes(api *gin.RouterGroup) {
 	{
 		users.POST("/sign-up", h.userSignUp)
 		users.POST("/sign-in", h.userSignIn)
+
+		users.GET("/google_login", h.GoogleLogin)
+		users.GET("/google_callback", h.GoogleCallback)
+
 		users.POST("/auth/refresh", h.userRefresh)
 		authenticated := users.Group("/", h.userIdentity)
 		{
@@ -160,4 +166,41 @@ func (h *Handler) userVerify(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, response{"success"})
+}
+func (h *Handler) GoogleLogin(c *gin.Context) {
+	url := h.cfg.AuthCodeURL("randomstate")
+
+	c.Redirect(http.StatusSeeOther, url)
+}
+func (h *Handler) GoogleCallback(c *gin.Context) {
+	state := c.Query("state")
+	if state != "randomstate" {
+		c.String(http.StatusBadRequest, "States don't Match!!")
+		return
+	}
+
+	code := c.Query("code")
+
+	googlecon := h.cfg
+
+	token, err := googlecon.Exchange(context.Background(), code)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "Code-Token Exchange Failed")
+		return
+	}
+
+	resp, err := http.Get("https://www.googleapis.com/oauth2/v2/userinfo?access_token=" + token.AccessToken)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "User Data Fetch Failed")
+		return
+	}
+
+	defer resp.Body.Close()
+	userData, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "JSON Parsing Failed")
+		return
+	}
+
+	c.String(http.StatusOK, string(userData))
 }

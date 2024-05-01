@@ -4,18 +4,17 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/zhosyaaa/RoommateTap/internal/service"
 	"github.com/zhosyaaa/RoommateTap/pkg/auth"
+	"golang.org/x/oauth2"
 )
 
 type Handler struct {
 	services     *service.Services
 	tokenManager auth.TokenManager
+	cfg          oauth2.Config
 }
 
-func NewHandler(services *service.Services, tokenManager auth.TokenManager) *Handler {
-	return &Handler{
-		services:     services,
-		tokenManager: tokenManager,
-	}
+func NewHandler(services *service.Services, tokenManager auth.TokenManager, cfg oauth2.Config) *Handler {
+	return &Handler{services: services, tokenManager: tokenManager, cfg: cfg}
 }
 
 func (h *Handler) Init(api *gin.RouterGroup) {

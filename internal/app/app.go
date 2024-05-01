@@ -84,7 +84,7 @@ func Run(configPath string) {
 		RedisClient:            rdb,
 	})
 
-	handlers := http2.NewHandler(services, tokenManager)
+	handlers := http2.NewHandler(services, tokenManager, cfg.GoogleLoginConfig)
 	// HTTP Server
 	srv := server.NewServer(cfg, handlers.Init(cfg))
 
