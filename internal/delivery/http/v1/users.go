@@ -2,6 +2,7 @@ package v1
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"github.com/gin-gonic/gin"
 	"github.com/zhosyaaa/RoommateTap/internal/domain"
@@ -199,6 +200,17 @@ func (h *Handler) GoogleCallback(c *gin.Context) {
 	userData, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		c.String(http.StatusInternalServerError, "JSON Parsing Failed")
+		return
+	}
+
+	var googleUser service.GoogleUser
+	if err := json.Unmarshal(userData, &googleUser); err != nil {
+		c.String(http.StatusInternalServerError, "User Data Unmarshal Failed")
+		return
+	}
+	_, _, err = h.services.Users.OAuthSignIn(c, googleUser, "", "")
+	if err != nil && !errors.Is(err, domain.ErrUserNotFound) {
+		c.String(http.StatusInternalServerError, "Database Error")
 		return
 	}
 

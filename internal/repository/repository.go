@@ -11,6 +11,7 @@ type User interface {
 	Delete(userid uint) error
 	GetByCredentials(email, password string) (user domain.User, err error)
 	Verify(userID uint, code string) error
+	GetByEmail(email string) (*domain.User, error)
 }
 
 type Repositories struct {

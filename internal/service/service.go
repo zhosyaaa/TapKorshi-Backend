@@ -25,6 +25,16 @@ type UserSignInInput struct {
 	Password string
 }
 
+type GoogleUser struct {
+	ID            string `json:"id"`
+	Email         string `json:"email"`
+	VerifiedEmail bool   `json:"verified_email"`
+	Name          string `json:"name"`
+	GivenName     string `json:"given_name"`
+	FamilyName    string `json:"family_name"`
+	Picture       string `json:"picture"`
+	Locale        string `json:"locale"`
+}
 type Tokens struct {
 	AccessToken  string
 	RefreshToken string
@@ -35,6 +45,7 @@ type Users interface {
 	SignIn(ctx context.Context, input UserSignInInput, Fingerprint, IP string) (Tokens, string, error)
 	Verify(ctx context.Context, userID uint, hash string) error
 	RefreshTokens(sessionId, token, fingerprint string) (Tokens, string, error)
+	OAuthSignIn(ctx context.Context, googleUser GoogleUser, Fingerprint, IP string) (Tokens, string, error)
 }
 
 type VerificationEmailInput struct {

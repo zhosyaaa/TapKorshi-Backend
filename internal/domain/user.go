@@ -30,4 +30,6 @@ type User struct {
 	LastVisitAt          time.Time `json:"lastVisitAt"`
 	VerificationCode     string    `json:"verification_code,omitempty"`
 	VerificationVerified bool      `json:"verification_verified,omitempty"`
+	GoogleID             string    `json:"google_id,omitempty"`
+	AvatarURL            string    `json:"avatar_url,omitempty"`
 }

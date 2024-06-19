@@ -138,3 +138,39 @@ func (s *UsersService) RefreshTokens(sessionId, token, fingerprint string) (Toke
 	}
 	return s.createSession(session.Userid, fingerprint, session.Ip)
 }
+
+func (s *UsersService) OAuthSignIn(ctx context.Context, googleUser GoogleUser, Fingerprint, IP string) (Tokens, string, error) {
+	user, err := s.repo.GetByEmail(googleUser.Email)
+	if err != nil && !errors.Is(err, domain.ErrUserNotFound) {
+		return Tokens{}, "", err
+	}
+
+	if user == nil {
+		// Если пользователь не существует, регистрируем нового пользователя
+		user = &domain.User{
+			Email:                googleUser.Email,
+			Username:             googleUser.Name,
+			GoogleID:             googleUser.ID,
+			AvatarURL:            googleUser.Picture,
+			VerificationVerified: googleUser.VerifiedEmail,
+			Created_at:           time.Now(),
+			LastVisitAt:          time.Now(),
+		}
+		_, err := s.repo.Create(*user)
+		if err != nil {
+			return Tokens{}, "", err
+		}
+	} else {
+		// Если пользователь существует, обновляем информацию
+		user.GoogleID = googleUser.ID
+		user.AvatarURL = googleUser.Picture
+		user.VerificationVerified = googleUser.VerifiedEmail
+		user.LastVisitAt = time.Now()
+		if err := s.repo.Update(*user); err != nil {
+			return Tokens{}, "", err
+		}
+	}
+
+	// Генерация JWT токенов
+	return s.createSession(user.ID, Fingerprint, IP)
+}
